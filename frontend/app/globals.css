@@ -91,14 +91,18 @@ button { cursor: pointer; }
 .section-intro { display: flex; justify-content: space-between; align-items: end; gap: 32px; margin-bottom: 38px; }
 .section-intro h2, .protocol-title h2, .recovery-band h2, .composer-intro h1, .detail-hero h1, .contract-page h1 { margin: 0; font-size: 48px; line-height: 1.02; }
 .section-intro > p { max-width: 520px; margin: 0; color: var(--muted); line-height: 1.6; }
-.ticket-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-.ticket-card { min-height: 310px; display: grid; grid-template-columns: 1fr 90px; color: var(--ink); background: var(--white); border: 1px solid var(--ink); border-radius: 6px; overflow: hidden; transition: transform 180ms ease, box-shadow 180ms ease; }
+.ticket-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+.ticket-card { min-width: 0; min-height: 330px; display: grid; grid-template-rows: 1fr auto; color: var(--ink); background: var(--white); border: 1px solid var(--ink); border-radius: 6px; overflow: hidden; transition: transform 180ms ease, box-shadow 180ms ease; }
 .ticket-card:hover { transform: translateY(-5px); box-shadow: 8px 8px 0 var(--mint); }
-.ticket-main { padding: 26px; }
-.ticket-top { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 20px; border-bottom: 1px dashed var(--line); font-size: 12px; font-family: Consolas, monospace; text-transform: uppercase; }
-.ticket-main h3 { margin: 30px 0 10px; font-size: 28px; }
-.ticket-main p { color: var(--muted); }
-.ticket-stub { display: flex; align-items: center; justify-content: center; color: var(--white); background: var(--coral); border-left: 2px dashed var(--paper); font-family: Consolas, monospace; font-weight: 800; writing-mode: vertical-rl; }
+.ticket-body { min-width: 0; padding: 24px 26px 28px; }
+.ticket-main { min-width: 0; padding-top: 24px; }
+.ticket-top { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 18px; border-bottom: 1px dashed var(--line); font-size: 12px; font-family: Consolas, monospace; text-transform: uppercase; }
+.ticket-main h3 { max-width: 18ch; margin: 28px 0 10px; font-size: 28px; line-height: 1.08; overflow-wrap: anywhere; }
+.ticket-main p { margin: 0 0 18px; color: var(--muted); overflow-wrap: anywhere; }
+.ticket-main strong { display: block; font-size: 20px; }
+.ticket-stub { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 22px; color: var(--white); background: var(--coral); border-top: 2px dashed var(--paper); font-family: Consolas, monospace; font-weight: 800; }
+.ticket-stub span { min-width: 0; overflow-wrap: anywhere; }
+.ticket-stub a { flex: 0 0 auto; display: grid; place-items: center; width: 38px; height: 38px; color: var(--ink); background: var(--white); border: 1px solid var(--ink); }
 .empty-board { min-height: 240px; display: grid; place-items: center; padding: 36px; text-align: center; border: 1px dashed var(--line); background: rgba(255,255,255,.45); }
 
 .protocol-band { color: var(--white); background: var(--ink); padding: 110px max(32px, calc((100vw - 1240px) / 2)); }
@@ -209,7 +213,8 @@ input:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(240,74,57,.
 .eventpass-hero-shell .hero-copy {
   position: relative;
   z-index: 2;
-  padding-top: 116px;
+  justify-content: flex-start;
+  padding-top: 54px;
   padding-bottom: 118px;
 }
 
@@ -287,10 +292,10 @@ input:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(240,74,57,.
 }
 
 .eventpass-photo-card {
-  align-self: center;
+  align-self: start;
   width: min(560px, calc(100% - 64px));
   min-height: 640px;
-  margin: 60px auto;
+  margin: 44px auto 60px;
   background: var(--ink-deep);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 30px;
