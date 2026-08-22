@@ -27,9 +27,17 @@ const ticketUrl = "https://arweave.net/eZRQIsEILZlWbI6ZupUiuNUSkucpzjj9m2hTOGrJG
 const sha256 = (value) => `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
 const parseRead = (value) => typeof value === "string" ? JSON.parse(value) : value;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const read = async (functionName, args = []) => parseRead(
-  await reader.readContract({ address: contractAddress, functionName, args }),
-);
+const read = async (functionName, args = []) => {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      return parseRead(await reader.readContract({ address: contractAddress, functionName, args }));
+    } catch (error) {
+      if (!String(error?.message || error).includes("Rate limit")) throw error;
+      await sleep(5000);
+    }
+  }
+  throw new Error(`Rate limit persisted while reading ${functionName}`);
+};
 
 const fetchEvidence = async (url) => {
   const response = await fetch(url);
@@ -43,7 +51,7 @@ const waitFor = async (label, predicate) => {
   for (let attempt = 0; attempt < 120; attempt += 1) {
     const value = await predicate();
     if (value) return value;
-    await sleep(2000);
+    await sleep(5000);
   }
   throw new Error(`Timed out waiting for ${label}`);
 };
