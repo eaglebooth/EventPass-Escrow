@@ -116,12 +116,12 @@ const main = async () => {
   const bond = 1n;
   const terms = JSON.stringify({
     price_wei: price.toString(),
-    funding_deadline: futureIso(60),
-    delivery_deadline: futureIso(120),
-    event_time: futureIso(180),
-    challenge_deadline: futureIso(240),
-    response_deadline: futureIso(300),
-    recovery_deadline: futureIso(360),
+    funding_deadline: futureIso(300),
+    delivery_deadline: futureIso(600),
+    event_time: futureIso(900),
+    challenge_deadline: futureIso(1200),
+    response_deadline: futureIso(1500),
+    recovery_deadline: futureIso(1800),
   });
   const commitment = sha256(`eventpass:${Date.now()}:${seller.address}:${buyer.address}`);
 

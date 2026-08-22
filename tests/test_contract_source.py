@@ -119,6 +119,9 @@ class ContractSourceTests(unittest.TestCase):
         self.assertIn('fullTransaction: true', runtime)
         self.assertIn('expectContractError', runtime)
         self.assertIn('FUNDING_NOT_ALLOWED', runtime)
+        composer = (ROOT / "frontend" / "app" / "passes" / "new" / "page.tsx").read_text(encoding="utf-8")
+        self.assertIn("date.getHours()", composer)
+        self.assertNotIn("toISOString()", composer)
 
 
 if __name__ == "__main__":

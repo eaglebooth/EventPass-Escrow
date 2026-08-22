@@ -7,7 +7,12 @@ import { ContractStrip } from "../../../components/ContractStrip";
 import { SiteHeader } from "../../../components/SiteHeader";
 import { normalizeDigest, parseGen, writeContract } from "../../../lib/genlayer";
 
-function iso(value: string) { return value ? new Date(value).toISOString().replace(".000", "") : ""; }
+function iso(value: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  const pad = (number: number) => String(number).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}Z`;
+}
 
 export default function NewPassPage() {
   const [form, setForm] = useState({ event: "", seat: "", policy: "", digest: "", price: "", bond: "", funding: "", delivery: "", eventTime: "", challenge: "", response: "", recovery: "" });
