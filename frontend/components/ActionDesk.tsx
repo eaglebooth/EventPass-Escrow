@@ -3,7 +3,7 @@
 import { AlertTriangle, Check, Gavel, LoaderCircle, LockKeyhole, RefreshCw, Upload } from "lucide-react";
 import { useState } from "react";
 import type { CalldataEncodable } from "genlayer-js/types";
-import { parseGen, writeContract } from "../lib/genlayer";
+import { normalizeDigest, parseGen, writeContract } from "../lib/genlayer";
 import type { Listing } from "../lib/types";
 
 type Evidence = { url: string; digest: string; commitment: string };
@@ -21,7 +21,11 @@ export function ActionDesk({ listing, onComplete }: { listing: Listing; onComple
     setBusy(true);
     setMessage("");
     try {
-      const hash = await writeContract(functionName, args, value);
+      const normalizedArgs = args.map((argument, index) => {
+        const isDigest = typeof argument === "string" && (index === 2 || index === 3);
+        return isDigest ? normalizeDigest(argument) : argument;
+      });
+      const hash = await writeContract(functionName, normalizedArgs, value);
       setMessage(`Accepted on Studionet · ${hash.slice(0, 10)}…${hash.slice(-6)}`);
       await onComplete();
     } catch (error) {
@@ -34,8 +38,8 @@ export function ActionDesk({ listing, onComplete }: { listing: Listing; onComple
   const evidenceFields = (includeCommitment: boolean) => (
     <div className="desk-fields">
       <label>Public evidence URL<input value={evidence.url} onChange={(event) => setEvidence({ ...evidence, url: event.target.value })} placeholder="https://arweave.net/..." /></label>
-      <label>SHA-256 digest<input value={evidence.digest} onChange={(event) => setEvidence({ ...evidence, digest: event.target.value })} placeholder="64 lowercase hexadecimal characters" /></label>
-      {includeCommitment && <label className="wide-field">Private ticket commitment<input value={evidence.commitment} onChange={(event) => setEvidence({ ...evidence, commitment: event.target.value })} placeholder="Commitment or encrypted handoff reference" /></label>}
+      <label>SHA-256 digest<input value={evidence.digest} onChange={(event) => setEvidence({ ...evidence, digest: event.target.value })} placeholder="sha256: + 64 lowercase hexadecimal characters" /></label>
+      {includeCommitment && <label className="wide-field">Private ticket commitment<input value={evidence.commitment} onChange={(event) => setEvidence({ ...evidence, commitment: event.target.value })} placeholder="sha256: + 64 lowercase hexadecimal characters" /></label>}
     </div>
   );
 
@@ -58,5 +62,5 @@ export function ActionDesk({ listing, onComplete }: { listing: Listing; onComple
     content = <div className="terminal-note"><Check size={20} /><span>This pass has reached a terminal state. No further money-moving action is available.</span></div>;
   }
 
-  return <section className="action-desk"><div className="desk-heading"><span>Next permitted action</span><b>{listing.status.replaceAll("_", " ")}</b></div>{content}{!listing.status.endsWith("PAID") && !["REFUNDED", "SETTLED"].includes(listing.status) && <button className="text-action" disabled={busy} onClick={() => run("recover_expired")}><RefreshCw size={15} /> Recover expired escrow</button>}{busy && <div className="busy-line"><LoaderCircle size={17} className="spin" /> Waiting for ACCEPTED consensus…</div>}{message && <div className={message.startsWith("Accepted") ? "success-message" : "error-message"}>{message}</div>}</section>;
+  return <section className="action-desk"><div className="desk-heading"><span>Next permitted action</span><b>{listing.status.replaceAll("_", " ")}</b></div>{content}{!listing.status.endsWith("PAID") && !["REFUNDED", "SETTLED"].includes(listing.status) && <button className="text-action" disabled={busy} onClick={() => run("recover_expired")}><RefreshCw size={15} /> Recover expired escrow</button>}{busy && <div className="busy-line"><LoaderCircle size={17} className="spin" /> Waiting for consensus and contract result…</div>}{message && <div className={message.startsWith("Accepted") ? "success-message" : "error-message"}>{message}</div>}</section>;
 }

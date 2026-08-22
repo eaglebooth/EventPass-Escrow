@@ -60,10 +60,30 @@ const write = async (client, functionName, args = [], value = 0n) => {
     status: TransactionStatus.ACCEPTED,
     interval: 2000,
     retries: 240,
-    fullTransaction: false,
+    fullTransaction: true,
   });
+  if (receipt.txExecutionResultName === "FINISHED_WITH_ERROR") {
+    throw new Error(`${functionName}: contract execution failed`);
+  }
+  const leaderReceipts = receipt.consensus_data?.leader_receipt ?? [];
+  const receiptText = JSON.stringify(leaderReceipts);
+  if (/FUNDING_NOT_ALLOWED|WRONG_VALUE|SELLER_ONLY|BUYER_ONLY|PARTY_ONLY|INVALID_|NOT_ALLOWED/.test(receiptText)) {
+    throw new Error(`${functionName}: contract returned a failure (${receiptText})`);
+  }
   process.stdout.write(`${functionName}: ${hash} (${receipt.statusName || "ACCEPTED"})\n`);
   return hash;
+};
+
+const expectContractError = async (client, functionName, args, value, expected) => {
+  try {
+    await write(client, functionName, args, value);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes(expected)) throw new Error(`Expected ${expected}, got: ${message}`);
+    process.stdout.write(`Expected contract failure: ${expected}\n`);
+    return;
+  }
+  throw new Error(`Contract unexpectedly accepted ${functionName}; expected ${expected}`);
 };
 
 const futureIso = (seconds) => new Date(Date.now() + seconds * 1000)
@@ -106,6 +126,8 @@ const main = async () => {
     bond,
   ], bond);
   await waitFor("LISTED", async () => (await read("get_listing", [listingId])).status === "LISTED");
+
+  await expectContractError(sellerClient, "fund_listing", [listingId], price, "FUNDING_NOT_ALLOWED");
 
   await write(buyerClient, "fund_listing", [listingId], price);
   await waitFor("FUNDED", async () => (await read("get_listing", [listingId])).status === "FUNDED");

@@ -1,6 +1,6 @@
 import { createAccount, createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
-import type { CalldataEncodable } from "genlayer-js/types";
+import type { CalldataEncodable, Hash } from "genlayer-js/types";
 
 const STORAGE_KEY = "eventpass.contract.v2";
 const RPC_URL = studionet.rpcUrls.default.http[0];
@@ -39,6 +39,14 @@ export function parseGen(value: string) {
   return BigInt(whole || 0) * 1_000_000_000_000_000_000n + BigInt((fraction + "0".repeat(18)).slice(0, 18));
 }
 
+export function normalizeDigest(value: string) {
+  const raw = value.trim().toLowerCase().replace(/^sha256:/, "");
+  if (!/^[0-9a-f]{64}$/.test(raw)) {
+    throw new Error("Digest must be exactly 64 hexadecimal characters (sha256:<digest> is accepted).");
+  }
+  return `sha256:${raw}`;
+}
+
 function readClient() {
   return createClient({ chain: studionet, account: readAccount });
 }
@@ -68,6 +76,35 @@ function transactionHash(value: unknown) {
     if (typeof candidate === "string") return candidate;
   }
   throw new Error("The wallet returned an invalid transaction identifier.");
+}
+
+const CONTRACT_ERRORS = new Set([
+  "INVALID_TERMS", "INVALID_LISTING", "LISTING_NOT_AVAILABLE", "FUNDING_NOT_ALLOWED", "WRONG_VALUE",
+  "TICKET_NOT_EXPECTED", "SELLER_ONLY", "DELIVERY_WINDOW_CLOSED", "INVALID_TICKET_EVIDENCE", "TICKET_ALREADY_LISTED",
+  "TICKET_NOT_READY", "VERIFICATION_WINDOW_CLOSED", "CHALLENGE_NOT_AVAILABLE", "BUYER_ONLY",
+  "CHALLENGE_WINDOW_CLOSED", "INVALID_CHALLENGE_EVIDENCE", "EVIDENCE_ALREADY_USED", "RESPONSE_NOT_EXPECTED",
+  "RESPONSE_WINDOW_CLOSED", "INVALID_RESPONSE_EVIDENCE", "CHALLENGE_NOT_READY", "ADJUDICATION_WINDOW_CLOSED",
+  "SELLER_RESPONSE_WINDOW_OPEN", "PARTY_ONLY", "SETTLEMENT_NOT_READY", "INVALID_RULING",
+  "LISTING_NOT_FOUND", "RECOVERY_NOT_AVAILABLE", "ESCROW_INVARIANT_BROKEN",
+]);
+
+function findContractError(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const match = value.match(/[A-Z][A-Z0-9_]+/g)?.find((item) => CONTRACT_ERRORS.has(item));
+    return match;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const match = findContractError(item);
+      if (match) return match;
+    }
+  } else if (value && typeof value === "object") {
+    for (const item of Object.values(value)) {
+      const match = findContractError(item);
+      if (match) return match;
+    }
+  }
+  return undefined;
 }
 
 export async function readContract<T>(functionName: string, args: CalldataEncodable[] = [], address = getContractAddress()) {
@@ -103,10 +140,11 @@ export async function writeContract(functionName: string, args: CalldataEncodabl
   const client = createClient({ chain: studionet, provider: window.ethereum, account: account as `0x${string}` });
   const result = await client.writeContract({ address: address as `0x${string}`, functionName, args, value });
   const hash = transactionHash(result);
-  return waitForAccepted(hash);
+  await waitForAccepted(hash, client);
+  return hash;
 }
 
-async function waitForAccepted(hash: string) {
+async function waitForAccepted(hash: string, client: ReturnType<typeof createClient>) {
   for (let attempt = 0; attempt < 180; attempt += 1) {
     const response = await fetch(RPC_URL, {
       method: "POST",
@@ -126,7 +164,16 @@ async function waitForAccepted(hash: string) {
     const status = typeof rawStatus === "number"
       ? STATUS_BY_CODE[rawStatus] ?? String(rawStatus)
       : String(rawStatus ?? "").toUpperCase();
-    if (status.includes("ACCEPTED") || status.includes("FINALIZED")) return hash;
+    if (status.includes("ACCEPTED") || status.includes("FINALIZED")) {
+      const transaction = await client.getTransaction({ hash: hash as Hash });
+      const execution = String(transaction?.txExecutionResultName ?? "");
+      if (execution === "FINISHED_WITH_ERROR") {
+        throw new Error("Contract execution failed. Open the transaction in Explorer for the validator error.");
+      }
+      const contractError = findContractError(transaction?.consensus_data?.leader_receipt ?? transaction);
+      if (contractError) throw new Error(`Contract rejected action: ${contractError}`);
+      return hash;
+    }
     if (["CANCELED", "UNDETERMINED", "LEADER_TIMEOUT", "VALIDATORS_TIMEOUT", "BLOCKED"].some((item) => status.includes(item))) {
       throw new Error(`Transaction ended with ${status}.`);
     }

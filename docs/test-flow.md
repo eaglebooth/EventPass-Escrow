@@ -18,6 +18,8 @@ Use two funded Studionet wallets and one manually deployed `EventPassEscrow` con
 5. After the challenge deadline, settle or call public recovery.
 6. Confirm the seller payout and terminal status in the app and Explorer.
 
+The runtime script also attempts `fund_listing` from the seller immediately after listing creation and asserts the contract-level `FUNDING_NOT_ALLOWED` return before continuing. This proves a transaction is not treated as successful merely because it reached `ACCEPTED`.
+
 ## Dispute path
 
 1. Repeat listing, funding, delivery, and verification with a new evidence packet.
@@ -38,3 +40,5 @@ Use two funded Studionet wallets and one manually deployed `EventPassEscrow` con
 - Expired nonterminal states recover without either party being able to choose the payout.
 
 The Python suite executes the full payout matrix and source-level implementation checks locally. Explorer transactions remain the proof for a deployed instance.
+
+The frontend normalizes every user-entered digest (policy, ticket, challenge, response, and commitment) to the contract-required `sha256:<64 lowercase hex>` form. It reads the full GenLayer transaction receipt and surfaces `FINISHED_WITH_ERROR` plus contract business failure codes such as `SELLER_ONLY`, `WRONG_VALUE`, and `FUNDING_NOT_ALLOWED`.

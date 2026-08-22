@@ -7,6 +7,9 @@ ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = ROOT / "contracts" / "EventPassEscrow.py"
 SOURCE = CONTRACT.read_text(encoding="utf-8")
 TREE = ast.parse(SOURCE)
+FRONTEND_GENLAYER = ROOT / "frontend" / "lib" / "genlayer.ts"
+FRONTEND_ACTIONS = ROOT / "frontend" / "components" / "ActionDesk.tsx"
+RUNTIME_FLOW = ROOT / "frontend" / "scripts" / "live-lifecycle.mjs"
 
 
 class ContractSourceTests(unittest.TestCase):
@@ -103,6 +106,19 @@ class ContractSourceTests(unittest.TestCase):
             "range(self.listing_count",
         ]:
             self.assertNotIn(marker, SOURCE)
+
+    def test_frontend_binds_prefixed_digests_and_contract_failures(self):
+        genlayer = FRONTEND_GENLAYER.read_text(encoding="utf-8")
+        actions = FRONTEND_ACTIONS.read_text(encoding="utf-8")
+        runtime = RUNTIME_FLOW.read_text(encoding="utf-8")
+        self.assertIn('return `sha256:${raw}`', genlayer)
+        self.assertIn('FINISHED_WITH_ERROR', genlayer)
+        self.assertIn('Contract rejected action:', genlayer)
+        self.assertIn('normalizeDigest', actions)
+        self.assertIn('Waiting for consensus and contract result', actions)
+        self.assertIn('fullTransaction: true', runtime)
+        self.assertIn('expectContractError', runtime)
+        self.assertIn('FUNDING_NOT_ALLOWED', runtime)
 
 
 if __name__ == "__main__":
